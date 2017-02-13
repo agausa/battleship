@@ -17,6 +17,8 @@ var gPlayerLeftHitMap = new Array();  // keep hit map to perevent double hit
 
 var gAI = new AI();
 
+var gUserID = gAI.random(0, 0x6FFFFFFF);
+
 // old below
 
 var gWindowWidth = 505;
@@ -141,15 +143,12 @@ function resetTheGame(){
 
     console.log('map reset!');
 
+    getEnemyId(gUserID);
 
-    /*
-    enemy1.reset(0, 65);
-    enemy2.reset(-100, 150);
-    enemy3.reset(150, 150);
-    enemy4.reset(-270, 235);
-*/
-    //player.reset(1*gGridStepX, 5*gGridStepY + gGridYOffset);
-    //player.sprite = 'images/char-horn-girl.png';
+    // start pooling server
+    poolEnemyMessage(gUserID);
+
+    $('#userid').text(gUserID);
 }
 
 // This listens for key presses and sends the keys to your
@@ -168,7 +167,7 @@ document.addEventListener('keyup', function(e) {
 // add mouse click handler
 var canvas = document.getElementById("battlefield");
 canvas.addEventListener('mousedown', function(e) {
-  var x = Math.floor(e.layerX/gGridWidth);
+  var x = Math.floor((e.layerX - gFieldSize - gSpaceBetween)/gGridWidth);
   var y = Math.floor(e.layerY/gGridWidth);
 
   console.log('click at: ' + x + ', ' + y);
@@ -183,8 +182,11 @@ canvas.addEventListener('mousedown', function(e) {
   }
 
   // test hit
+  var bRet = 0;
+
+  /*
   for(var i = 0; i < allEnemies.length; i++){
-    var bRet = allEnemies[i].IsHit(x,y);
+    bRet = allEnemies[i].IsHit(x,y);
     if(bRet == 1){
       alert('hit!');
       break;
@@ -194,6 +196,31 @@ canvas.addEventListener('mousedown', function(e) {
       break;
     }
   }
+  */
+
+  // send request to server
+  var request = 'http://localhost/battleship/php/index.php?method=postmessage&id='+ gUserID + '&x=' + x + '&y=' + y;
+  //alert(request);
+  $.ajax({
+    url:request,
+    success:function(response){
+        //alert(response);
+        /*
+        var res = response[1];
+        alert(res);
+        alert(response[0]);
+        */
+      }
+  }).error(function(e){
+    alert(e.responseText);
+  });
+
+  // mark the field
+  if(bRet == 0)
+    ctx.drawImage(Resources.get('images/grid_cross.png'), gFieldSize + gSpaceBetween + x * gCellWidth, y * gCellWidth);
+  else
+    ctx.drawImage(Resources.get('images/grid_red_cross.png'), gFieldSize + gSpaceBetween + x * gCellWidth, y * gCellWidth);
+
 
   // mark the hit map
   gPlayerLeftHitMap[index] = 1;
@@ -280,33 +307,77 @@ var ship1x4 = new Ship(position.left, position.top, horizontal, 1);
 allEnemies.push(ship1x4);
 ship1x4.markOnMap(gLayoutMap);
 
-/*
-var ship1 = new Ship(5, 5, true, 1);
-allEnemies.push(ship1);
-
-var ship2 = new Ship(2, 3, true, 2);
-allEnemies.push(ship2);
-
-var ship3 = new Ship(7, 3, false, 2);
-allEnemies.push(ship3);
-
-var ship4 = new Ship(7, 7, false, 3);
-allEnemies.push(ship4);
-
-var ship5 = new Ship(2, 8, true, 4);
-allEnemies.push(ship5);
-*/
-/*
-
-var enemy1 = new Enemy(100);
-allEnemies.push(enemy1);
-var enemy2 = new Enemy(150);
-allEnemies.push(enemy2);
-var enemy3 = new Enemy(150);
-allEnemies.push(enemy3);
-var enemy4 = new Enemy(120);
-allEnemies.push(enemy4);
-
-*/
-
 var player = new Player();
+
+//________________________________ poolEnemyMessage ___________________________
+
+function poolEnemyMessage(id){
+  //alert('pool');
+
+  setTimeout(function(){
+
+    // send request to server
+    var request = 'http://localhost/battleship/php/index.php?method=getmessage&id=' + id;
+    //alert(request);
+    $.ajax({
+      url:request,
+      success:function(responseJSON){
+          // alert(responseJSON);
+          if(responseJSON != null && responseJSON.length > 0){ // not empty result
+            var response = JSON.parse(responseJSON);
+            var x = parseInt(response[0].x);
+            var y = parseInt(response[0].y);
+            var bRet = enemyHit(x, y);
+
+            // mark the field
+            if(bRet == 0)
+              ctx.drawImage(Resources.get('images/grid_cross.png'), x * gCellWidth, y * gCellWidth);
+            else
+              ctx.drawImage(Resources.get('images/grid_red_cross.png'), x * gCellWidth, y * gCellWidth);
+          }
+        }
+    }).error(function(e){
+      alert(e.responseText);
+    });
+
+    $('#userid').text(id);
+
+    poolEnemyMessage(id);
+  }, 1000);
+}
+
+//________________________________ getEnemyId _________________________________
+
+function getEnemyId(id){
+  var request = 'http://localhost/battleship/php/index.php?method=getenemyid&id=' + id;
+  //alert(request);
+  $.ajax({
+    url:request,
+    success:function(responseJSON){
+        alert(responseJSON);
+        if(responseJSON != null && responseJSON.length > 0){ // not empty result
+          //var response = JSON.parse(responseJSON);
+        }
+      }
+  }).error(function(e){
+    alert(e.responseText);
+  });
+}
+
+//________________________________ enemyHit ___________________________________
+
+function enemyHit(x, y){
+  var bRet = false;
+  for(var i = 0; i < allEnemies.length; i++){
+    bRet = allEnemies[i].IsHit(x,y);
+    if(bRet == 1){
+      alert('hit!');
+      break;
+    }
+    else if(bRet == 2){
+      alert('sunk!');
+      break;
+    }
+  }
+  return bRet;
+};

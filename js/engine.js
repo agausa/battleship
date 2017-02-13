@@ -14,6 +14,10 @@
  * a little simpler to work with.
  */
 
+var gCellWidth = 50;
+var gSpaceBetween = 20;
+var gFieldSize = gCellWidth * 10;
+
 var Engine = (function(global) {
     /* Predefine the variables we'll be using within this scope,
      * create the canvas element, grab the 2D context for that canvas
@@ -25,10 +29,12 @@ var Engine = (function(global) {
         ctx = canvas.getContext('2d'),
         lastTime;
 
-    canvas.width = 501;
-    canvas.height = 501;
+    canvas.width = gFieldSize*2 + gSpaceBetween + 1;
+    canvas.height = gFieldSize + 1;
     canvas.id = 'battlefield';
     doc.body.appendChild(canvas);
+
+
 
     /* This function serves as the kickoff point for the game loop itself
      * and handles properly calling the update and render methods.
@@ -138,7 +144,10 @@ var Engine = (function(global) {
                  * so that we get the benefits of caching these images, since
                  * we're using them over and over.
                  */
-                ctx.drawImage(Resources.get(rowImages[row]), col * 50, row * 50);
+                ctx.drawImage(Resources.get(rowImages[row]), col * gCellWidth, row * gCellWidth);
+
+                // drow enemy field
+                ctx.drawImage(Resources.get(rowImages[row]), gFieldSize + gSpaceBetween + col * gCellWidth, row * gCellWidth);
             }
         }
 
@@ -175,6 +184,9 @@ var Engine = (function(global) {
      */
     Resources.load([
         'images/grid.png',
+        'images/grid_cross.png',
+        'images/grid_red_cross.png',
+
         'images/ship1x1.png',
         'images/ship2x1.png',
         'images/ship1x2.png',
