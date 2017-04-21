@@ -14,7 +14,7 @@
  * a little simpler to work with.
  */
 
-var gCellWidth = 50;
+var gCellWidth = 30;
 var gSpaceBetween = 20;
 var gFieldSize = gCellWidth * 10;
 
@@ -201,16 +201,7 @@ var Engine = (function(global) {
         'images/ship3x1_sunk.png',
         'images/ship1x3_sunk.png',
         'images/ship4x1_sunk.png',
-        'images/ship1x4_sunk.png',
-
-        'images/stone-block.png',
-        'images/water-block-small.png',
-        'images/water-block.png',
-        'images/grass-block.png',
-        'images/enemy-bug.png',
-        'images/char-boy.png',
-        'images/char-horn-girl.png',
-        'images/char-princess-girl.png'
+        'images/ship1x4_sunk.png'
     ]);
     Resources.onReady(init);
 

@@ -7,8 +7,8 @@
 
 // G L O B A L S
 
-var gGridWidth = 50;
-var gGridHeight = 50;
+var gGridWidth = 30;
+var gGridHeight = 30;
 
 var gGridSize = 10;
 
@@ -18,6 +18,8 @@ var gPlayerLeftHitMap = new Array();  // keep hit map to perevent double hit
 var gAI = new AI();
 
 var gUserID = gAI.random(0, 0x6FFFFFFF);
+
+var gSunkShips = 0;
 
 // old below
 
@@ -32,6 +34,8 @@ var gSpriteHeight = 50;
 
 var gGridYOffset = -2;
 
+var gHost = 'localhost'; // www.bluepointstudios.com
+
 // Enemies our player must avoid
 var Enemy = function(speed) {
     // Variables applied to each of our instances go here,
@@ -39,7 +43,7 @@ var Enemy = function(speed) {
 
     // The image/sprite for our enemies, this uses
     // a helper we've provided to easily load images
-    this.sprite = 'images/enemy-bug.png';
+    this.sprite = 'images/grid_cross.png';
 
     this.width = gSpriteWidth;   // image size
     this.height = gSpriteHeight;
@@ -72,7 +76,7 @@ Enemy.prototype.render = function() {
 // a handleInput() method.
 
 var Player = function(){
-  this.sprite = 'images/char-horn-girl.png';
+  this.sprite = 'images/grid_cross.png';
 
   this.width = gSpriteWidth;   // image size
   this.height = gSpriteHeight;
@@ -101,7 +105,7 @@ Player.prototype.handleInput = function(e){
     // control the end of the game
     if (this.y == gGridYOffset)
     {
-      this.sprite = 'images/char-princess-girl.png';
+      this.sprite = 'images/grid_cross.png';
       // resetTheGame();
     }
   }
@@ -149,6 +153,8 @@ function resetTheGame(){
     poolEnemyMessage(gUserID);
 
     $('#userid').text(gUserID);
+
+    gSunkShips = 0;
 }
 
 // This listens for key presses and sends the keys to your
@@ -173,6 +179,11 @@ canvas.addEventListener('mousedown', function(e) {
   console.log('click at: ' + x + ', ' + y);
   //alert('click at: ' + x + ', ' + y);
 
+  if(x < 0){
+    alert('Please play on enemy field!');
+    return;
+  }
+
   var index = y*gGridWidth + x;
 
   // if we hit it before - just exit
@@ -184,32 +195,14 @@ canvas.addEventListener('mousedown', function(e) {
   // test hit
   var bRet = 0;
 
-  /*
-  for(var i = 0; i < allEnemies.length; i++){
-    bRet = allEnemies[i].IsHit(x,y);
-    if(bRet == 1){
-      alert('hit!');
-      break;
-    }
-    else if(bRet == 2){
-      alert('sunk!');
-      break;
-    }
-  }
-  */
-
   // send request to server
-  var request = 'http://localhost/battleship/php/index.php?method=postmessage&id='+ gUserID + '&x=' + x + '&y=' + y;
+  var request = 'http://'+ gHost + '/battleship/php/index.php?method=postmessage&id='+ gUserID + '&x=' + x + '&y=' + y;
   //alert(request);
   $.ajax({
     url:request,
     success:function(response){
-        //alert(response);
-        /*
-        var res = response[1];
-        alert(res);
-        alert(response[0]);
-        */
+        // alert(response);
+        // var response = JSON.parse(responseJSON);
       }
   }).error(function(e){
     alert(e.responseText);
@@ -218,9 +211,12 @@ canvas.addEventListener('mousedown', function(e) {
   // mark the field
   if(bRet == 0)
     ctx.drawImage(Resources.get('images/grid_cross.png'), gFieldSize + gSpaceBetween + x * gCellWidth, y * gCellWidth);
-  else
-    ctx.drawImage(Resources.get('images/grid_red_cross.png'), gFieldSize + gSpaceBetween + x * gCellWidth, y * gCellWidth);
+  else{
+    var damaged = new Sprite(x, y, 'images/grid_red_cross.png', false);
+    allEnemies.push(damaged);
 
+    //ctx.drawImage(Resources.get('images/grid_red_cross.png'), gFieldSize + gSpaceBetween + x * gCellWidth, y * gCellWidth);
+  }
 
   // mark the hit map
   gPlayerLeftHitMap[index] = 1;
@@ -317,23 +313,55 @@ function poolEnemyMessage(id){
   setTimeout(function(){
 
     // send request to server
-    var request = 'http://localhost/battleship/php/index.php?method=getmessage&id=' + id;
+    var request = 'http://' + gHost + '/battleship/php/index.php?method=getmessage&id=' + id;
     //alert(request);
     $.ajax({
       url:request,
       success:function(responseJSON){
-          // alert(responseJSON);
           if(responseJSON != null && responseJSON.length > 0){ // not empty result
+
             var response = JSON.parse(responseJSON);
             var x = parseInt(response[0].x);
             var y = parseInt(response[0].y);
-            var bRet = enemyHit(x, y);
+            var reply = parseInt(response[0].reply);
+            var result = parseInt(response[0].result);
 
-            // mark the field
-            if(bRet == 0)
-              ctx.drawImage(Resources.get('images/grid_cross.png'), x * gCellWidth, y * gCellWidth);
-            else
-              ctx.drawImage(Resources.get('images/grid_red_cross.png'), x * gCellWidth, y * gCellWidth);
+            if(reply){
+              // alert(responseJSON);
+
+              // mark on enemy field
+              var damaged = new Sprite(x, y, 'images/grid_red_cross.png', true);
+              allEnemies.push(damaged);
+              if(result == 2){
+                alert('Sunk!');
+                gSunkShips++;
+                if(gSunkShips == 10)
+                  alert('G A M E   O V E R !');
+              }
+              else
+                alert('Hit!');
+            } else {
+              var bRet = enemyHit(x, y);
+
+              // mark the field
+              if(bRet == 0)
+                ctx.drawImage(Resources.get('images/grid_cross.png'), x * gCellWidth, y * gCellWidth);
+              else {
+                // mark on our field
+                var damaged = new Sprite(x, y, 'images/grid_red_cross.png');
+                allEnemies.push(damaged);
+
+                // send message to enemy with result
+                var request = 'http://' + gHost + '/battleship/php/index.php?method=postmessage&id='+ gUserID + '&x=' + x + '&y=' + y + '&result=' + bRet;
+                $.ajax({
+                  url:request,
+                  success:function(response){
+                    }
+                }).error(function(e){
+                  alert(e.responseText);
+                });
+              }
+            }
           }
         }
     }).error(function(e){
@@ -349,14 +377,41 @@ function poolEnemyMessage(id){
 //________________________________ getEnemyId _________________________________
 
 function getEnemyId(id){
-  var request = 'http://localhost/battleship/php/index.php?method=getenemyid&id=' + id;
+  var request = 'http://' + gHost + '/battleship/php/index.php?method=getenemyid&id=' + id;
   //alert(request);
   $.ajax({
     url:request,
     success:function(responseJSON){
-        alert(responseJSON);
         if(responseJSON != null && responseJSON.length > 0){ // not empty result
-          //var response = JSON.parse(responseJSON);
+          var response = JSON.parse(responseJSON);
+          alert('Your enemy is: ' + response.userA);
+        }
+        else{ // we need to wait till enemy will show up
+          alert('No enemy available yet - will wait...')
+          setTimeout(wait4enemy, 500);
+        }
+      }
+  }).error(function(e){
+    alert(e.responseText);
+  });
+}
+
+//________________________________ wait4enemy _________________________________
+
+function wait4enemy(){
+  var request = 'http://' + gHost + '/battleship/php/index.php?method=waitenemyid&id=' + gUserID;
+  //alert(request);
+  $.ajax({
+    url:request,
+    success:function(responseJSON){
+        console.log(responseJSON);
+        if(responseJSON != null && responseJSON.length > 0){ // not empty result
+          var response = JSON.parse(responseJSON);
+
+          if(response.userB == null) // wait more
+            setTimeout(wait4enemy, 500);
+          else
+            alert('Your enemy: ' + response.userB + ' just join the GAME!');
         }
       }
   }).error(function(e){
@@ -371,11 +426,11 @@ function enemyHit(x, y){
   for(var i = 0; i < allEnemies.length; i++){
     bRet = allEnemies[i].IsHit(x,y);
     if(bRet == 1){
-      alert('hit!');
+      // alert('hit!');
       break;
     }
     else if(bRet == 2){
-      alert('sunk!');
+      //  alert('sunk!');
       break;
     }
   }

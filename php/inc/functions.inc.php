@@ -42,7 +42,7 @@
 
 		$db = mysql_select_db(DB_NAME);
 
-		$sql = "SELECT body FROM messages WHERE sent='NO'";
+		$sql = "SELECT body FROM messages WHERE sent='NO' LIMIT 1";
 		$result = mysql_query($sql);
 		if(!$result)
 			die('empty!');
@@ -55,7 +55,7 @@
 
 	//__________________________________ setRequest _______________________________
 
-	function setHitRequest($requestId, $id, $x, $y){
+	function setHitRequest($requestId, $id, $x, $y, $result){
 		//echo 'received ' . $x . $y;
 
 		$link = mysql_connect(DB_INFO, DB_USER, DB_PASS);
@@ -64,8 +64,10 @@
 
 		$db = mysql_select_db(DB_NAME);
 
-		$sql = sprintf("INSERT INTO message (requestId, userFrom, x, y) VALUES(%d, '%s', %d, %d)",
-				$requestId, $id, $x, $y);
+		if($result == null)
+			$sql = sprintf("INSERT INTO message (requestId, userFrom, x, y) VALUES(%d, '%s', %d, %d)", $requestId, $id, $x, $y);
+		else
+			$sql = sprintf("INSERT INTO message (requestId, userFrom, x, y, reply, result) VALUES(%d, '%s', %d, %d, 1, %d)", $requestId, $id, $x, $y, $result);
 
 		// $sql = "INSERT INTO message (userFrom, x, y) VALUES('7', 7, 7)";
 		$result = mysql_query($sql, $link);
@@ -86,7 +88,7 @@
 
 		$db = mysql_select_db(DB_NAME);
 
-		$sql = sprintf("SELECT * FROM message WHERE processed=0 AND userFrom != %d", $user);
+		$sql = sprintf("SELECT * FROM message WHERE processed=0 AND userFrom != %d LIMIT 1", $user);
 		$result = mysql_query($sql);
 
 		//return $sql;
@@ -120,27 +122,44 @@
 
 		$db = mysql_select_db(DB_NAME);
 
-		// try to get empty slot to satrt the game
-		$sql = "SELECT requestId, userA FROM battleship.battle WHERE userA IS NOT NULL AND userB IS NULL AND started = 0";
+		// try to get empty slot to start the game
+		$sql = "SELECT requestId, userA FROM battle WHERE userA IS NOT NULL AND userB IS NULL AND started = 0";
 		$result = mysql_query($sql);
 
 
-		if (mysql_num_rows($result) == 0){
+		if(mysql_num_rows($result) == 0){
 			$requestId = time();
 			// if empty - create a record and set userA
-			$sql = sprintf("INSERT INTO battleship.battle (requestId, userA) VALUES(%d, %d)", $requestId, $user);
+			$sql = sprintf("INSERT INTO battle (requestId, userA) VALUES(%d, %d)", $requestId, $user);
 			$result = mysql_query($sql, $link);
 		}
 		else{
 			$row = mysql_fetch_assoc($result);
 
 			// commit the game
-			$sql = sprintf("UPDATE battleship.battle SET userB=%d WHERE requestId=%d", $user, $row['requestId']);
+			$sql = sprintf("UPDATE battle SET userB=%d WHERE requestId=%d", $user, $row['requestId']);
 			$result = mysql_query($sql, $link);
 
-			return $sql;
-
 			// return enemy id
+			return json_encode($row);
+		}
+	}
+
+	//__________________________________ waitEnemyId _____________________________
+
+	function waitEnemyId($user){
+		$link = mysql_connect(DB_INFO, DB_USER, DB_PASS);
+		if(!$link)
+			die('Connection failed: ' . mysql_error());
+
+		$db = mysql_select_db(DB_NAME);
+
+		// get enemy for given user
+		$sql = sprintf("SELECT requestId, userB FROM battle WHERE userA = %d", $user);
+		$result = mysql_query($sql);
+
+		if(mysql_num_rows($result) != 0){
+			$row = mysql_fetch_assoc($result);
 			return json_encode($row);
 		}
 	}

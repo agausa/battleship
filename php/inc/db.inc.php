@@ -1,9 +1,4 @@
 <?php
-	/*
-	define('DB_INFO', 'localhost');
-	define('DB_USER', 'root');
-	define('DB_PASS', 'd0n3tsk1');
-	define('DB_NAME', 'chatbuddy');*/
 
 	define('DB_INFO', 'localhost');
 	define('DB_USER', 'agausa');
@@ -13,10 +8,10 @@
 
 
 	/*
-	define('DB_INFO', 'mysql.kisscathcart.com');
-	define('DB_USER', 'kisskass');
-	define('DB_PASS', 'n3wy0rk');
-	define('DB_NAME', 'kissprojects');
+		define('DB_INFO', 'localhost');
+		define('DB_USER', 'bluep12_battle');
+		define('DB_PASS', 'v0ln0vaXa'); //v0ln0vaXa
+		define('DB_NAME', 'bluep12_battleship');
 	*/
 
 ?>
